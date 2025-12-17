@@ -1,6 +1,7 @@
 import {
   FortiOSDriver,
   FortiOSSystemVDOM,
+  isDevMode,
   NAMNsxIntegrator,
 } from "@norskhelsenett/zeniki";
 import {
@@ -9,48 +10,10 @@ import {
   FortiOSAddressGrps,
   FortiOSAddressGrps6,
 } from "../ssi.utils.ts";
+import logger from "../loggers/logger.ts";
 
-export const deployToFortigate = async (
+export const deployIPv4 = async (
   integrator: NAMNsxIntegrator,
-  fortiOSIPv4Groups: FortiOSAddressGrps,
-  fortiOSIPv4Addresses: FortiOSAddresses,
-  fortiOSIPv6Groups: FortiOSAddressGrps6,
-  fortiOSIPv6Addresses: FortiOSAddresses6,
-) => {
-  try {
-    for (const endpoint of integrator.fortigate_endpoints) {
-      console.log(
-        `Deploying ipv4 to Fortigate at ${endpoint.endpoint.name}...`,
-      );
-
-      const firewall = new FortiOSDriver({
-        baseURL: endpoint.endpoint.url!,
-        headers: {
-          Authorization: "Bearer " + endpoint.endpoint.key,
-        },
-      });
-
-      for (const vdom of endpoint.vdoms) {
-        await deployIPV4ToVdom(
-          firewall,
-          vdom,
-          fortiOSIPv4Groups,
-          fortiOSIPv4Addresses,
-        );
-        await deployIPV6ToVdom(
-          firewall,
-          vdom,
-          fortiOSIPv6Groups,
-          fortiOSIPv6Addresses,
-        );
-      }
-    }
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const deployIPV4ToVdom = async (
   firewall: FortiOSDriver,
   vdom: FortiOSSystemVDOM,
   fortiOSIPv4Groups: FortiOSAddressGrps,
@@ -78,14 +41,46 @@ export const deployIPV4ToVdom = async (
       (group) =>
         !fgIPv4Groups.results.some((fgGroup) => fgGroup.name === group.name),
     );
+
     // Create missing addresses and groups on Fortigate
     for (const address of missingAddresses) {
-      await firewall.address.addAddress(address, { vdom: vdom.name });
+      await firewall.address.addAddress(address, { vdom: vdom.name }).then(
+        () => {
+          logger.info(
+            `nsx-firewall-ssi: Created IPv4 address '${address.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'.`,
+          );
+        },
+      ).catch((error: Error) => {
+        logger.error(
+          `nsx-firewall-ssi: Failed to create IPv4 address '${address.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'`,
+          {
+            component: "fortios.service",
+            method: "deployIPV4ToVdom",
+            error: isDevMode() ? error : error?.message,
+          },
+        );
+      });
     }
 
     for (const group of missingGroups) {
-      await firewall.addrgrp.addAddressGroup(group, { vdom: vdom.name });
+      await firewall.addrgrp.addAddressGroup(group, { vdom: vdom.name }).then(
+        () => {
+          logger.info(
+            `nsx-firewall-ssi: Created IPv4 address group '${group.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'.`,
+          );
+        },
+      ).catch((error: Error) => {
+        logger.error(
+          `nsx-firewall-ssi: Failed to create IPv4 address group '${group.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'`,
+          {
+            component: "fortios.service",
+            method: "deployIPV4ToVdom",
+            error: isDevMode() ? error : error?.message,
+          },
+        );
+      });
     }
+
     // Update group if the members have changed
     for (const group of Object.values(fortiOSIPv4Groups)) {
       const existingGroup = fgIPv4Groups.results.find(
@@ -105,6 +100,21 @@ export const deployIPV4ToVdom = async (
           console.log(`  - Updating group: ${group.name}`);
           await firewall.addrgrp.updateAddressGroup(group.name, group, {
             vdom: vdom.name,
+          }).then(
+            () => {
+              logger.info(
+                `nsx-firewall-ssi: Updated IPv4 address group '${group.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'.`,
+              );
+            },
+          ).catch((error: Error) => {
+            logger.error(
+              `nsx-firewall-ssi: Failed to update IPv4 address group '${group.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'`,
+              {
+                component: "fortios.service",
+                method: "deployIPV4ToVdom",
+                error: isDevMode() ? error : error?.message,
+              },
+            );
           });
         }
       }
@@ -114,7 +124,7 @@ export const deployIPV4ToVdom = async (
   }
 };
 
-export const deployIPV6ToVdom = async (
+export const deployIPv6 = async (
   firewall: FortiOSDriver,
   vdom: FortiOSSystemVDOM,
   fortiOSIPv6Groups: FortiOSAddressGrps6,

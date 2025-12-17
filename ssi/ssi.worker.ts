@@ -26,8 +26,8 @@ import {
   getGroupTagsGroupsAndMembers,
   getVMTagsGroupsAndMembers,
 } from "./services/nsx.service.ts";
-import { deployIPV4ToVdom } from "./services/fortios.service.ts";
-import { deployIPV6ToVdom } from "./services/fortios.service.ts";
+import { deployIPv4 } from "./services/fortios.service.ts";
+import { deployIPv6 } from "./services/fortios.service.ts";
 
 const SSI_NAME = Deno.env.get("SSI_NAME") ?? "SSI_NAME_MISSING";
 const USER_AGENT = `${SSI_NAME}/${packageInfo.version}`;
@@ -182,10 +182,10 @@ export class SSIWorker {
               result.fortiOSIPv6Groups,
             );
             logger.info(
-              "nsx-firewall-ssi: Manager ${manager.name} - Finished with Groups...",
+              `nsx-firewall-ssi: Manager ${manager.name} - Finished with Groups...`,
             );
 
-            console.log(fortiOSIPv4Groups);
+            // console.log(fortiOSIPv4Groups);
 
             for (const fgEndpoint of integrator.fortigate_endpoints) {
               this._firewall = this._configureFirewall(
@@ -194,37 +194,23 @@ export class SSIWorker {
 
               await Promise.all(
                 fgEndpoint.vdoms.map(async (vdom) => {
-                  await Promise.all([
-                    deployIPV4ToVdom(
-                      this._firewall as FortiOSDriver,
-                      vdom,
-                      fortiOSIPv4Groups,
-                      fortiOSIPv4Addresses,
-                    ),
-                    deployIPV6ToVdom(
-                      this._firewall as FortiOSDriver,
-                      vdom,
-                      fortiOSIPv6Groups,
-                      fortiOSIPv6Addresses,
-                    ),
-                  ]);
+                  // await Promise.all([
+                  //   deployIPV4(
+                  //     integrator,
+                  //     this._firewall as FortiOSDriver,
+                  //     vdom,
+                  //     fortiOSIPv4Groups,
+                  //     fortiOSIPv4Addresses,
+                  //   ),
+                  //   deployIPV6ToVdom(
+                  //     this._firewall as FortiOSDriver,
+                  //     vdom,
+                  //     fortiOSIPv6Groups,
+                  //     fortiOSIPv6Addresses,
+                  //   ),
+                  // ]);
                 }),
               );
-
-              // for (const vdom of fgEndpoint.vdoms) {
-              //   await deployIPV4ToVdom(
-              //     this._firewall,
-              //     vdom,
-              //     fortiOSIPv4Groups,
-              //     fortiOSIPv4Addresses,
-              //   );
-              //   await deployIPV6ToVdom(
-              //     this._firewall,
-              //     vdom,
-              //     fortiOSIPv6Groups,
-              //     fortiOSIPv6Addresses,
-              //   );
-              // }
             }
           }
         }
