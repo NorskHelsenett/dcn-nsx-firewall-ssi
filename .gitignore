@@ -1,0 +1,158 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# compiled output
+/dist
+/tmp
+/out-tsc
+tsconfig.tsbuildinfo
+tmp/
+*.tmp.ts
+test_/
+
+#Certs
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.cer
+#Include Internal CA chain.
+!nhn_internal_ca_chain.crt
+
+# Archives
+*.tgz
+*.zip
+
+#Enviroment
+.venv
+.env
+.env.copy
+.enviroment
+enviroment/
+nodemon.json
+node*.json
+secrets*.json
+secrets*.yaml
+secrets*.yml
+/secrets
+/logs
+/ssl
+.ssl
+config.json
+config.yaml
+config.yml
+.npmrc
+
+#Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.swp
+
+#Sql Lite
+*.sqlite
+*.sqlite3
+
+#Ansible
+*.retry
+vault.yml
+vault.yaml
+.vault_pass.*
+hosts
+nam.ini
+ansible.cfg
+
+# dependencies
+/node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+/private_files
+out.csv
+
+#OS Spefific below here!
+
+# Windows thumbnail cache files
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder config file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+*~
+
+# temporary files which can be created if a process still has a handle open of a deleted file
+.fuse_hidden*
+
+# KDE directory preferences
+.directory
+
+# Linux trash folder which might appear on any partition or disk
+.Trash-*
+
+# .nfs files are created when an open file is removed but is still being accessed
+.nfs*

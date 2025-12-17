@@ -1,0 +1,32 @@
+{
+  "version": "0.9.27",
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-write --allow-env --allow-sys --unsafely-ignore-certificate-errors --watch main.ts",
+    "test": "deno test --allow-all --unsafely-ignore-certificate-errors main_test.ts",
+    "run": "deno run --allow-net --allow-read --allow-write --allow-sys --allow-env --cert /etc/ssl/certs/nhn_internal_ca_chain.crt main.ts",
+    "unsafe": "deno run --allow-net --allow-read --allow-write --allow-sys --allow-env --unsafely-ignore-certificate-errors main.ts",
+    "update": "deno clean cache && deno outdated --update --latest",
+    "debug": "deno run --allow-all --unsafely-ignore-certificate-errors --log-level=debug  --inspect-brk main.ts"
+  },
+  "imports": {
+    "@norskhelsenett/zeniki": "npm:@norskhelsenett/zeniki@^0.5.8",
+    "@std/assert": "jsr:@std/assert@^1.0.16",
+    "@types/lodash.differencewith": "npm:@types/lodash.differencewith@^4.5.9",
+    "@types/node": "npm:@types/node@^24.10.1",
+    "ip-num": "npm:ip-num@^1.5.2",
+    "lodash.differencewith": "npm:lodash.differencewith@^4.5.0",
+    "uuid": "npm:uuid@^13.0.0",
+    "winston": "npm:winston@^3.18.3",
+    "winston-daily-rotate-file": "npm:winston-daily-rotate-file@^5.0.0",
+    "ipaddr.js": "npm:ipaddr.js@^2.1.0"
+  },
+  "fmt": {
+    "exclude": [
+      "**/*.yaml",
+      "**/*.json",
+      "**/*.yml"
+    ]
+  },
+  "lock": false,
+  "nodeModulesDir": "auto"
+}

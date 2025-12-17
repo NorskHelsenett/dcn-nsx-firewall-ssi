@@ -1,0 +1,30 @@
+schedule: "*/15 * * * *"
+
+limits:
+  memory:
+    min: "384Mi"
+    max: "1152Mi"
+  cpu:
+    min: "300m"
+    max: "600m"
+
+settings:
+  environment: production
+  infrastructure: prod
+  priority: "{{ .Values.settings.priority }}"
+  interval: 300
+  continuousMode: false
+
+integration:
+  nam:
+    url: "https://dcn.nhn.no:3000/api"
+    test_int: "" # Only used for development testing
+  splunk:
+    url: "https://splunk-hec.nhn.no"
+    index: "dc_nam"
+    source: "nsx-firewall-ssi:prod"
+
+credentials:
+  namToken: "{{ .Values.credentials.namToken }}"
+  splunkToken: "{{ .Values.credentials.splunkToken }}"
+workspace: ssi

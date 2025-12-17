@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nsx-firewall-ssi-low-qa #nsx-firewall-ssi-<priority>-<environment>
+  namespace: argocd
+
+spec:
+  destination:
+    namespace: ssi
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: dcn-nsx-firewall-ssi
+    helm:
+      valueFiles:
+      - values.yaml
+      - env/qa.yaml #test, qa, prod
+      parameters:
+        - name: settings.continuousMode
+          value: "true" # True for continuous mode (Pod), false for one shot mode (CronJob)
+        - name: settings.interval
+          value: "300" #Seconds for continuous mode (Pod)
+        - name: schedule
+          value: "*/5 * * * *" # Used for one shot mode (CronJob)
+        - name: settings.priority
+          value: "low" # high, medium, low
+        - name: credentials.namToken
+          value: "<NAM_TOKEN_HERE>"
+        - name: credentials.splunkToken
+          value: "<SPLUNK_TOKEN_HERE>" 
+    repoURL: ncr.sky.nhn.no/ghcr/norskhelsenett/helm
+    targetRevision: "*"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

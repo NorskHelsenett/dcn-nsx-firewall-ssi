@@ -1,0 +1,28 @@
+---
+# Configuration for NSX-Firewall-SSI
+# Syncs IP address management data from Netbox to FortiOS firewalls
+#
+# Usage:
+# 1. Copy this file: cp examples/config.yaml.example config/config.yaml
+# 2. Update values to match your environment
+# 3. Safe to commit (contains no sensitive data)
+#
+# For Docker: File must be readable by UID 1993 (deno user)
+# chmod 644 config/config.yaml && sudo chown 1993:1993 config/config.yaml
+
+# Environment and SSI settings
+DENO_ENV: "production"                     # Runtime environment: development, production
+SSI_NAME: "NSX-Firewall-SSI"              # Service name
+SSI_PRIORITY: "high"                       # Execution priority: low, medium, high
+SSI_INTERVAL: "300"                        # Sync interval in seconds
+REQUEST_TIMEOUT: "10000"                   # API request timeout in milliseconds
+
+# NAM (Network Automation Manager) settings
+NAM_URL: "https://nam.example.com/api"     # NAM API endpoint
+NAM_TEST_INT: "507f1f77bcf86cd799439011"   # Netbox integrator ID for testing
+
+# Splunk logging settings
+SPLUNK_URL: "https://splunk.example.com"   # Splunk HEC endpoint
+SPLUNK_INDEX: "network_automation"         # Target Splunk index
+SPLUNK_SOURCE: "nsx-firewall-ssi:qa"         # Log source identifier with environment
+SPLUNK_SOURCE_TYPE: "nsx-firewall-ssi:high" # Source type with priority

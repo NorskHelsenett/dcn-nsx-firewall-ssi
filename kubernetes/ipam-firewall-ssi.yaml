@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nsx-firewall-ssi
+  namespace: ssi
+  labels:
+    app: nsx-firewall-ssi
+spec:
+  containers:
+    - name: nsx-firewall-ssi
+      imagePullPolicy: Always
+      image: ncr.sky.nhn.no/ghcr/norskhelsenett/dcn-nsx-firewall-ssi:latest
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        runAsNonRoot: true
+        runAsUser: 1993
+        runAsGroup: 1993
+        readOnlyRootFilesystem: true
+      volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: secrets
+          mountPath: /app/secrets
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+          readOnly: false
+      resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "384Mi"
+          cpu: "300m"
+  volumes:
+    - name: config
+      configMap:
+        name: nsx-firewall-ssi-config
+    - name: secrets
+      secret:
+        secretName: nsx-firewall-ssi-secrets
+    - emptyDir: { sizeLimit: 50Mi }
+      name: logs
+      

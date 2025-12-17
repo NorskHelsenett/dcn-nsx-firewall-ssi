@@ -1,0 +1,61 @@
+{{- if not .Values.settings.continuousMode -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  concurrencyPolicy: {{ .Values.allowConcurrent | ternary "Allow" "Forbid" }}
+  successfulJobsHistoryLimit:
+    {{ .Values.successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit | default 3 }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+              image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+              imagePullPolicy: Always
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1993
+                runAsGroup: 1993
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                requests:
+                  memory: {{ .Values.limits.memory.min }}
+                  cpu: {{ .Values.limits.cpu.min }}
+                limits:
+                  memory: {{ .Values.limits.memory.max }}
+                  cpu: {{ .Values.limits.cpu.max }}
+              volumeMounts:
+                - name: config
+                  mountPath: /app/config
+                  readOnly: true
+                - name: credentials
+                  mountPath: /app/secrets
+                  readOnly: true
+                - name: logs
+                  mountPath: /app/logs
+          volumes:
+            - name: config
+              configMap:
+                name: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}-config
+            - name: credentials
+              secret:
+                secretName: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}-secrets
+            - name: logs
+              emptyDir:
+                sizeLimit: 50Mi
+{{- end -}}

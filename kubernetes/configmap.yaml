@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nsx-firewall-ssi-config
+  namespace: ssi
+data:
+  config.yaml: |
+    ---
+    # Configuration for NSX-Firewall-SSI
+    # Syncs IP address management data from Netbox to FortiOS firewalls
+
+    # Environment and SSI settings
+    DENO_ENV: "development"                    # Runtime environment: development, production
+    CRON_MODE: "false"                         # Execution mode: "false" or undefined = one-shot (CronJob), "true" = continuous (Pod)
+    SSI_NAME: "NSX-Firewall-SSI"              # Service name
+    SSI_PRIORITY: "high"                       # Execution priority: low, medium, high
+    SSI_INTERVAL: "60"                         # Sync interval in seconds (used in continuous mode)
+    REQUEST_TIMEOUT: "5000"                    # API request timeout in milliseconds
+
+    # NAM (Network Automation Manager) settings
+    NAM_URL: "https://qa.dcn.nhn.no:3000/api"  # NAM API endpoint
+    NAM_TEST_INT: "68fb3b04b26e1dfbd93847e0"   # Netbox integrator ID for testing
+
+    # Splunk logging settings
+    SPLUNK_URL: "https://splunk-hec.nhn.no"    # Splunk HEC endpoint
+    SPLUNK_INDEX: "dc_nam"                     # Target Splunk index
+    SPLUNK_SOURCE: "nsx-firewall-ssi"         # Log source identifier
+    SPLUNK_SOURCE_TYPE: "nsx-firewall-ssi:high" # Source type with priority

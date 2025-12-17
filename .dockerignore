@@ -1,0 +1,23 @@
+**/logs
+**/node_modules
+**/dist
+.git
+npm-debug.log
+.coverage
+.coverage.*
+.env
+.aws
+**/kubernetes
+# Secrets and more
+nsx-firewall-ssi.yaml
+secrets.yaml
+config.yaml
+#Certs
+*.pem
+*.key
+*.csr
+*.p12
+*.pfx
+*.cer
+# Packages
+*.tgz

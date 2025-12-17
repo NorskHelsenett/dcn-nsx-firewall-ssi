@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}-config
+  namespace: ssi
+data:
+  config.yaml: |
+    ---
+    DENO_ENV: {{ .Values.settings.environment | quote }}
+    SSI_NAME: "SSI-NSX-Firewall"
+    SSI_PRIORITY: {{ .Values.settings.priority | quote }}
+    SSI_INTERVAL: {{ .Values.settings.interval | quote }}
+    REQUEST_TIMEOUT: {{ .Values.settings.timeout | quote }}
+    CRON_MODE: {{ .Values.settings.continuousMode | quote }}
+    NAM_URL: {{ .Values.integration.nam.url | quote }}
+    NAM_TEST_INT: {{ .Values.integration.nam.test_int | quote }}
+    SPLUNK_URL: {{ .Values.integration.splunk.url | quote }}
+    SPLUNK_INDEX: {{ .Values.integration.splunk.index | quote }}
+    SPLUNK_SOURCE: {{ .Values.integration.splunk.source | quote }}
+    SPLUNK_SOURCE_TYPE: "nsx-firewall-ssi:{{ .Values.settings.priority }}"

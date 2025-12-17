@@ -1,0 +1,12 @@
+services:
+  nsx-firewall-ssi:
+    build: .
+    container_name: nsx-firewall-ssi
+    image: nsx-firewall-ssi
+    user: "1993:1993"
+    environment:
+      - SECRETS_PATH=/app/secrets/secrets.yaml
+      - CONFIG_PATH=/app/config/config.yaml
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+      - ./secrets/secrets.yaml:/app/secrets/secrets.yaml:ro

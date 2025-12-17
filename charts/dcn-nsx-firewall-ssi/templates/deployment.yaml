@@ -1,0 +1,61 @@
+{{- if .Values.settings.continuousMode -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nsx-firewall-ssi-deployment-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+  namespace: ssi
+  labels:
+    app: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+  template:
+    metadata:
+      labels:
+        app: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}
+          imagePullPolicy: Always
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 1993
+            runAsGroup: 1993
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: credentials
+              mountPath: /app/secrets
+              readOnly: true
+            - name: logs
+              mountPath: /app/logs
+              readOnly: false
+          resources:
+            requests:
+              memory: {{ .Values.limits.memory.min }}
+              cpu: {{ .Values.limits.cpu.min }}
+            limits:
+              memory: {{ .Values.limits.memory.max }}
+              cpu: {{ .Values.limits.cpu.max }}
+      volumes:
+        - name: config
+          configMap:
+            name: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}-config
+        - name: credentials
+          secret:
+            secretName: nsx-firewall-ssi-{{ .Values.settings.priority }}-{{ .Values.settings.infrastructure }}-secrets
+        - name: logs
+          emptyDir:
+            sizeLimit: 50Mi
+{{- end -}}
