@@ -285,95 +285,95 @@ export const getGroupTagsGroupsAndMembers = async (
         }
 
         // Process IP addresses
-        for (let ip of groupIpAddresses) {
-          // if the ip address i a host address remove the prefix
+        for (const ip of groupIpAddresses) {
+          let normalizedIp = ip;
           if (ip.includes("/") && ip.split("/")[1] === "32") {
-            ip = ip.split("/")[0];
+            normalizedIp = ip.split("/")[0];
           }
 
           // Filter out vif addresses
           if (
             groupVifAddresses.some((vifIp: string) => {
-              return vifIp === ip;
+              return vifIp === normalizedIp;
             })
           ) {
             continue;
           }
 
-          const isIPv4 = Validator.isValidIPv4String(ip)[0] ||
-            Validator.isValidIPv4CidrNotation(ip)[0] ||
-            Validator.isValidIPv4RangeString(ip)[0];
+          const isIPv4 = Validator.isValidIPv4String(normalizedIp)[0] ||
+            Validator.isValidIPv4CidrNotation(normalizedIp)[0] ||
+            Validator.isValidIPv4RangeString(normalizedIp)[0];
 
-          const isIPv6 = Validator.isValidIPv6String(ip)[0] ||
-            Validator.isValidIPv6CidrNotation(ip)[0] ||
-            Validator.isValidIPv6RangeString(ip)[0];
+          const isIPv6 = Validator.isValidIPv6String(normalizedIp)[0] ||
+            Validator.isValidIPv6CidrNotation(normalizedIp)[0] ||
+            Validator.isValidIPv6RangeString(normalizedIp)[0];
 
           if (isIPv4) {
-            if (Validator.isValidIPv4String(ip)[0]) {
-              let ipv4AddressName =
-                `nsx_${manager.name}_${group.display_name}_${ip}/32`;
+            let ipv4AddressName =
+              `nsx_${manager.name}_${group.display_name}_${normalizedIp}${
+                Validator.isValidIPv4String(normalizedIp)[0] ? "/32" : ""
+              }`;
 
-              // Maximum length of an address object in Fortigate is 79 characters
-              // so hash the ip if its to long
-              if (ipv4AddressName.length > 79) {
-                ipv4AddressName = `nsx_${manager.name}_${group.display_name}_${
-                  hashIpAddress(ip)
-                }`;
-              }
+            // Maximum length of an address object in Fortigate is 79 characters
+            // so hash the ip if its to long
+            if (ipv4AddressName.length > 79) {
+              ipv4AddressName = `nsx_${manager.name}_${group.display_name}_${
+                hashIpAddress(normalizedIp)
+              }`;
+            }
 
-              const address = createIPv4Address(
-                ip,
-                ipv4AddressName,
-                ipv4AddressName.length > 79,
-              );
+            const address = createIPv4Address(
+              normalizedIp,
+              ipv4AddressName,
+              ipv4AddressName.length > 79,
+            );
 
-              if (!fortiOSIPv4Addresses[ipv4AddressName]) {
-                if (address) {
-                  fortiOSIPv4Addresses[ipv4AddressName] = address;
-                }
-              }
-
-              if (
-                !fortiOSIPv4Groups[ipv4GroupName].member.some(
-                  (member) => member.name === ipv4AddressName,
-                )
-              ) {
-                fortiOSIPv4Groups[ipv4GroupName].member.push({
-                  name: ipv4AddressName,
-                });
+            if (!fortiOSIPv4Addresses[ipv4AddressName]) {
+              if (address) {
+                fortiOSIPv4Addresses[ipv4AddressName] = address;
               }
             }
+
+            if (
+              !fortiOSIPv4Groups[ipv4GroupName].member.some(
+                (member) => member.name === ipv4AddressName,
+              )
+            ) {
+              fortiOSIPv4Groups[ipv4GroupName].member.push({
+                name: ipv4AddressName,
+              });
+            }
           } else if (isIPv6) {
-            if (Validator.isValidIPv6CidrNotation(ip)[0]) {
-              let ipv6AddressName =
-                `nsx6_${manager.name}_${group.display_name}_${ip}`;
+            let ipv6AddressName =
+              `nsx6_${manager.name}_${group.display_name}_${normalizedIp}`;
 
-              // Maximum length of an address object in Fortigate is 79 characters
-              // so hash the ip if its to long
-              if (ipv6AddressName.length > 79) {
-                ipv6AddressName = `nsx6_${manager.name}_${hashIpAddress(ip)}`;
-              }
+            // Maximum length of an address object in Fortigate is 79 characters
+            // so hash the ip if its to long
+            if (ipv6AddressName.length > 79) {
+              ipv6AddressName = `nsx6_${manager.name}_${
+                hashIpAddress(normalizedIp)
+              }`;
+            }
 
-              if (!fortiOSIPv6Addresses[ipv6AddressName]) {
-                const address = createIPv6Address(
-                  ip,
-                  ipv6AddressName,
-                  ipv6AddressName.length > 79,
-                );
-                if (address) {
-                  fortiOSIPv6Addresses[ipv6AddressName] = address;
-                }
+            if (!fortiOSIPv6Addresses[ipv6AddressName]) {
+              const address = createIPv6Address(
+                normalizedIp,
+                ipv6AddressName,
+                ipv6AddressName.length > 79,
+              );
+              if (address) {
+                fortiOSIPv6Addresses[ipv6AddressName] = address;
               }
+            }
 
-              if (
-                !fortiOSIPv6Groups[ipv6GroupName].member.some(
-                  (member) => member.name === ipv6AddressName,
-                )
-              ) {
-                fortiOSIPv6Groups[ipv6GroupName].member.push({
-                  name: ipv6AddressName,
-                });
-              }
+            if (
+              !fortiOSIPv6Groups[ipv6GroupName].member.some(
+                (member) => member.name === ipv6AddressName,
+              )
+            ) {
+              fortiOSIPv6Groups[ipv6GroupName].member.push({
+                name: ipv6AddressName,
+              });
             }
           }
         }

@@ -105,7 +105,6 @@ export class SSIWorker {
             })
           )?.results as NAMNsxIntegrator[]);
 
-        // ! Here we go!
         for (const integrator of integrators) {
           logger.info(
             `nsx-firewall-ssi: Processing integrator ${integrator.name}...`,
@@ -195,19 +194,19 @@ export class SSIWorker {
               await Promise.all(
                 fgEndpoint.vdoms.map(async (vdom) => {
                   // await Promise.all([
-                  //   deployIPV4(
+                  //   deployIPv4(
                   //     integrator,
                   //     this._firewall as FortiOSDriver,
                   //     vdom,
                   //     fortiOSIPv4Groups,
                   //     fortiOSIPv4Addresses,
                   //   ),
-                  //   deployIPV6ToVdom(
-                  //     this._firewall as FortiOSDriver,
-                  //     vdom,
-                  //     fortiOSIPv6Groups,
-                  //     fortiOSIPv6Addresses,
-                  //   ),
+                  // deployIPv6(
+                  //   this._firewall as FortiOSDriver,
+                  //   vdom,
+                  //   fortiOSIPv6Groups,
+                  //   fortiOSIPv6Addresses,
+                  // ),
                   // ]);
                 }),
               );
@@ -215,33 +214,39 @@ export class SSIWorker {
           }
         }
 
-        // ! Finished
-
         //  Final cleanup - clear integrators array
         if (isDevMode()) {
           logger.debug(
             `nsx-firewall-ssi: Cleaning up integrators array (${integrators.length} integrators processed)`,
+            {
+              component: "worker",
+              method: "work",
+            },
           );
         }
         integrators.length = 0;
 
         this._running = false;
         this._resetDriverInstances();
-        logger.debug("nsx-firewall-ssi: Worker task completed...");
+        this._run_counter += 1;
+        logger.debug("nsx-firewall-ssi: Worker task completed...", {
+          component: "worker",
+          method: "work",
+        });
+        // This shall be a console log, as we´re only interested in number of runs completed, and not logging them.
         console.log(
           `nsx-firewall-ssi: Completed run number ${this._run_counter}`,
         );
         return 0;
       } else {
-        logger.warning("nsx-firewall-ssi: Worker task already running...");
+        logger.warning("nsx-firewall-ssi: Worker task already running...", {
+          component: "worker",
+          method: "work",
+        });
         return 7;
       }
-    } catch (error) {
+    } catch (error: unknown) {
       this._running = false;
-      console.log(
-        `nsx-firewall-ssi: Completed run number ${this._run_counter}`,
-      );
-      console.log(error);
       throw error;
     }
   }
