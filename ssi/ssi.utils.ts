@@ -1,10 +1,12 @@
 import {
+  FortiOSDriver,
   FortiOSFirewallAddress,
   FortiOSFirewallAddress6,
   FortiOSFirewallAddress6Type,
   FortiOSFirewallAddressType,
   FortiOSFirewallAddrGrp,
   FortiOSFirewallAddrGrp6,
+  FortiOSSystemVDOM,
   NAMAPIEndpoint,
   VMwareNSXDriver,
   VMwareNSXGroup,
@@ -58,6 +60,32 @@ export const createIPv4Address = (
     };
   }
   return null;
+};
+
+export const addressInUse = async (
+  firewall: FortiOSDriver,
+  vdom: FortiOSSystemVDOM,
+  address: { name: string },
+): Promise<boolean> => {
+  const currentAddress = (await firewall.address.getAddress(
+    address.name,
+    { with_meta: 1, vdom: vdom.name },
+  )).results[0];
+
+  return currentAddress?.q_ref !== 0;
+};
+
+export const address6InUse = async (
+  firewall: FortiOSDriver,
+  vdom: FortiOSSystemVDOM,
+  address: { name: string },
+): Promise<boolean> => {
+  const currentAddress = (await firewall.address6.getAddress6(
+    address.name,
+    { with_meta: 1, vdom: vdom.name },
+  )).results[0];
+
+  return currentAddress?.q_ref !== 0;
 };
 
 export const createIPv6Address = (
