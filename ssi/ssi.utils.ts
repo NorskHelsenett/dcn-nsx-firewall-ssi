@@ -1,6 +1,8 @@
 import {
   FortiOSFirewallAddress,
   FortiOSFirewallAddress6,
+  FortiOSFirewallAddress6Type,
+  FortiOSFirewallAddressType,
   FortiOSFirewallAddrGrp,
   FortiOSFirewallAddrGrp6,
   NAMAPIEndpoint,
@@ -11,7 +13,7 @@ import {
 } from "@norskhelsenett/zeniki";
 import ipaddr from "ipaddr.js";
 import { createHash } from "node:crypto";
-
+import { IPv4CidrRange, Validator } from "ip-num";
 const SSI_NAME = Deno.env.get("SSI_NAME") ?? "SSI_NAME_MISSING";
 import packageInfo from "../deno.json" with { type: "json" };
 const USER_AGENT = `${SSI_NAME}/${packageInfo.version}`;
@@ -21,11 +23,73 @@ export type FortiOSAddresses = Record<string, FortiOSFirewallAddress>;
 export type FortiOSAddressGrps6 = Record<string, FortiOSFirewallAddrGrp6>;
 export type FortiOSAddresses6 = Record<string, FortiOSFirewallAddress6>;
 
+export const createIPv4Address = (
+  ip: string,
+  addressName: string,
+  isHashed = false,
+): FortiOSFirewallAddress | null => {
+  if (Validator.isValidIPv4String(ip)[0]) {
+    return {
+      name: addressName,
+      type: FortiOSFirewallAddressType.IP_Mask,
+      subnet: `${ip} 255.255.255.255`,
+      comment: isHashed ? "Hashed address name due to length" : "",
+    };
+  } else if (Validator.isValidIPv4CidrNotation(ip)[0]) {
+    const subnet = ip.split("/")[0];
+    const subnetMask = IPv4CidrRange.fromCidr(ip)
+      .getPrefix()
+      .toMask()
+      .toString();
+    return {
+      name: addressName,
+      type: FortiOSFirewallAddressType.IP_Mask,
+      subnet: `${subnet} ${subnetMask}`,
+      comment: isHashed ? "Hashed address name due to length" : "",
+    };
+  } else if (Validator.isValidIPv4RangeString(ip)[0]) {
+    const [start, end] = ip.split("-");
+    return {
+      name: addressName,
+      type: FortiOSFirewallAddressType.IP_Range,
+      "start-ip": start,
+      "end-ip": end,
+      comment: isHashed ? "Hashed address name due to length" : "",
+    };
+  }
+  return null;
+};
+
+export const createIPv6Address = (
+  ip: string,
+  addressName: string,
+  isHashed = false,
+): FortiOSFirewallAddress6 | null => {
+  if (Validator.isValidIPv6CidrNotation(ip)[0]) {
+    return {
+      name: addressName,
+      type: FortiOSFirewallAddress6Type.IP_Prefix,
+      ip6: ip,
+      comment: isHashed ? "Hashed address name due to length" : "",
+    };
+  } else if (Validator.isValidIPv6RangeString(ip)[0]) {
+    const [start, end] = ip.split("-");
+    return {
+      name: addressName,
+      type: FortiOSFirewallAddress6Type.IP_Range,
+      "start-ip": start,
+      "end-ip": end,
+      comment: isHashed ? "Hashed address name due to length" : "",
+    };
+  }
+  return null;
+};
+
 export const filterVMsByTag = (
   vms: VMwareNSXVirtualMachine[],
   scope: string,
   tagName: string,
-) => {
+): VMwareNSXVirtualMachine[] => {
   return vms.filter((vm) =>
     vm.tags?.some((t) => t.scope === scope && t.tag === tagName)
   );
@@ -35,13 +99,16 @@ export const filterGroupsByTag = (
   groups: VMwareNSXGroup[],
   scope: string,
   tagName: string,
-) => {
+): VMwareNSXGroup[] => {
   return groups.filter((group) =>
     group.tags?.some((t) => t.scope === scope && t.tag === tagName)
   );
 };
 
-export const getVmIpAddresses = async (nsx: VMwareNSXDriver, vmId: string) => {
+export const getVmIpAddresses = async (
+  nsx: VMwareNSXDriver,
+  vmId: string,
+): Promise<string[]> => {
   const vifs = await nsx.virtualInterfaces.getVirtualInterfaces({
     owner_vm_id: vmId,
   });

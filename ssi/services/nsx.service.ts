@@ -18,6 +18,8 @@ import {
 } from "@norskhelsenett/zeniki";
 
 import {
+  createIPv4Address,
+  createIPv6Address,
   filterGroupsByTag,
   filterVMsByTag,
   FortiOSAddresses,
@@ -30,7 +32,7 @@ import {
   removeLinkLocalAddresses,
 } from "../ssi.utils.ts";
 import ipaddr from "ipaddr.js";
-import { IPv4CidrRange, Validator } from "ip-num";
+import { Validator } from "ip-num";
 
 // import logger from "../loggers/logger.ts";
 
@@ -298,97 +300,50 @@ export const getGroupTagsGroupsAndMembers = async (
             continue;
           }
 
-          if (
-            // Match valid ipv4
-            Validator.isValidIPv4String(ip)[0] ||
+          const isIPv4 = Validator.isValidIPv4String(ip)[0] ||
             Validator.isValidIPv4CidrNotation(ip)[0] ||
-            Validator.isValidIPv4RangeString(ip)[0]
-          ) {
+            Validator.isValidIPv4RangeString(ip)[0];
+
+          const isIPv6 = Validator.isValidIPv6String(ip)[0] ||
+            Validator.isValidIPv6CidrNotation(ip)[0] ||
+            Validator.isValidIPv6RangeString(ip)[0];
+
+          if (isIPv4) {
             if (Validator.isValidIPv4String(ip)[0]) {
-              const ipv4AddressName =
+              let ipv4AddressName =
                 `nsx_${manager.name}_${group.display_name}_${ip}/32`;
 
-              if (!fortiOSIPv4Addresses[ipv4AddressName]) {
-                fortiOSIPv4Addresses[ipv4AddressName] = {
-                  name: ipv4AddressName,
-                  type: FortiOSFirewallAddressType.IP_Mask,
-                  subnet: `${ip} 255.255.255.255`,
-                };
-              }
-
-              if (
-                !fortiOSIPv4Groups[ipv4GroupName].member.some(
-                  (member) => member.name === ipv4AddressName,
-                )
-              ) {
-                fortiOSIPv4Groups[ipv4GroupName].member.push({
-                  name: ipv4AddressName,
-                });
-              }
-            } else if (Validator.isValidIPv4CidrNotation(ip)[0]) {
-              const subnet = ip.split("/")[0];
-              const subnetMask = IPv4CidrRange.fromCidr(ip)
-                .getPrefix()
-                .toMask()
-                .toString();
-              const ipv4AddressName =
-                `nsx_${manager.name}_${group.display_name}_${ip}`;
-
-              if (!fortiOSIPv4Addresses[ipv4AddressName]) {
-                fortiOSIPv4Addresses[ipv4AddressName] = {
-                  name: ipv4AddressName,
-                  type: FortiOSFirewallAddressType.IP_Mask,
-                  subnet: `${subnet} ${subnetMask}`,
-                };
-              }
-
-              if (
-                !fortiOSIPv4Groups[ipv4GroupName].member.some(
-                  (member) => member.name === ipv4AddressName,
-                )
-              ) {
-                fortiOSIPv4Groups[ipv4GroupName].member.push({
-                  name: ipv4AddressName,
-                  // ip: subnet,
-                  // subnetMask: subnetMask,
-                });
-              }
-            } else if (Validator.isValidIPv4RangeString(ip)[0]) {
-              const start = ip.split("-")[0];
-              const end = ip.split("-")[1];
-              let ipv4AddressName =
-                `nsx_${manager.name}_${group.display_name}_${start}_${end}`;
-
               // Maximum length of an address object in Fortigate is 79 characters
-              // so hash the ip if its to long.
+              // so hash the ip if its to long
               if (ipv4AddressName.length > 79) {
-                // prettier-ignore
-                ipv4AddressName = `nsx_${manager.name}_${(hashIpAddress(ip))}`; // ! HASH IP
-                ipv4AddressName = `nsx_${manager.name}_${ip}`;
+                ipv4AddressName = `nsx_${manager.name}_${group.display_name}_${
+                  hashIpAddress(ip)
+                }`;
               }
+
+              const address = createIPv4Address(
+                ip,
+                ipv4AddressName,
+                ipv4AddressName.length > 79,
+              );
 
               if (!fortiOSIPv4Addresses[ipv4AddressName]) {
-                fortiOSIPv4Addresses[ipv4AddressName] = {
-                  name: ipv4AddressName,
-                  type: FortiOSFirewallAddressType.IP_Range,
-                  "start-ip": start,
-                  "end-ip": end,
-                  comment: ipv4AddressName.length > 79
-                    ? "Hashed address name due to length"
-                    : "",
-                };
+                if (address) {
+                  fortiOSIPv4Addresses[ipv4AddressName] = address;
+                }
               }
 
-              fortiOSIPv4Groups[ipv4GroupName].member.push({
-                name: ipv4AddressName,
-              });
+              if (
+                !fortiOSIPv4Groups[ipv4GroupName].member.some(
+                  (member) => member.name === ipv4AddressName,
+                )
+              ) {
+                fortiOSIPv4Groups[ipv4GroupName].member.push({
+                  name: ipv4AddressName,
+                });
+              }
             }
-          } else if (
-            // Match valid ipv6
-            Validator.isValidIPv6String(ip)[0] ||
-            Validator.isValidIPv6CidrNotation(ip)[0] ||
-            Validator.isValidIPv6RangeString(ip)[0]
-          ) {
+          } else if (isIPv6) {
             if (Validator.isValidIPv6CidrNotation(ip)[0]) {
               let ipv6AddressName =
                 `nsx6_${manager.name}_${group.display_name}_${ip}`;
@@ -400,38 +355,14 @@ export const getGroupTagsGroupsAndMembers = async (
               }
 
               if (!fortiOSIPv6Addresses[ipv6AddressName]) {
-                fortiOSIPv6Addresses[ipv6AddressName] = {
-                  name: ipv6AddressName,
-                  type: FortiOSFirewallAddress6Type.IP_Prefix,
-                  ip6: ip,
-                  comment: ipv6AddressName.length > 79
-                    ? "Hashed address name due to length"
-                    : "",
-                };
-              }
-
-              if (
-                !fortiOSIPv6Groups[ipv6GroupName].member.some(
-                  (member) => member.name === ipv6AddressName,
-                )
-              ) {
-                fortiOSIPv6Groups[ipv6GroupName].member.push({
-                  name: ipv6AddressName,
-                });
-              }
-            } else if (Validator.isValidIPv6RangeString(ip)[0]) {
-              const start = ip.split("-")[0];
-              const end = ip.split("-")[1];
-              const ipv6AddressName =
-                `nsx6_${manager.name}_${group.display_name}_${start}_${end}`;
-
-              if (!fortiOSIPv6Addresses[ipv6AddressName]) {
-                fortiOSIPv6Addresses[ipv6AddressName] = {
-                  name: ipv6AddressName,
-                  type: FortiOSFirewallAddress6Type.IP_Range,
-                  "start-ip": start,
-                  "end-ip": end,
-                };
+                const address = createIPv6Address(
+                  ip,
+                  ipv6AddressName,
+                  ipv6AddressName.length > 79,
+                );
+                if (address) {
+                  fortiOSIPv6Addresses[ipv6AddressName] = address;
+                }
               }
 
               if (
