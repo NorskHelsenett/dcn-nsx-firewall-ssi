@@ -80,7 +80,7 @@ export class SSIWorker {
 
   /**
    * Main work method that performs synchronization tasks
-   * Fetches integrators, retrieves prefixes from Netbox, and deploys to firewall systems
+   * Fetches integrators, retrieves ip addresses from NSX and deploys to firewall systems
    * @param priority - Sync priority filter: low, medium, or high
    */
   public async work(priority: string = "low") {
@@ -106,9 +106,15 @@ export class SSIWorker {
           )?.results as NAMNsxIntegrator[]);
 
         for (const integrator of integrators) {
-          logger.info(
-            `nsx-firewall-ssi: Processing integrator ${integrator.name}...`,
-          );
+          if (isDevMode()) {
+            logger.debug(
+              `nsx-firewall-ssi: * Processing integrator: ${integrator.name}...`,
+              {
+                component: "worker",
+                method: "work",
+              },
+            );
+          }
           const managers = integrator.managers as NAMAPIEndpoint[];
           let fortiOSIPv4Groups: FortiOSAddressGrps = {};
           let fortiOSIPv4Addresses: FortiOSAddresses = {};
@@ -121,9 +127,11 @@ export class SSIWorker {
 
             // Fetch VM tags from local manager only
             if (lm) {
-              logger.info(
-                `nsx-firewall-ssi: Local Manager ${manager.name}...`,
-              );
+              if (isDevMode()) {
+                logger.debug(
+                  `nsx-firewall-ssi:   -- Processing VM tags from local manager ${manager.name}.`,
+                );
+              }
 
               const result = await getVMTagsGroupsAndMembers(
                 this._nsx,
@@ -146,10 +154,6 @@ export class SSIWorker {
               Object.assign(
                 fortiOSIPv6Addresses,
                 result.fortiOSIPv6Addresses,
-              );
-
-              logger.info(
-                `nsx-firewall-ssi: Local Manager ${manager.name} - Finished with VMs...`,
               );
             }
 
@@ -180,11 +184,6 @@ export class SSIWorker {
               fortiOSIPv6Groups,
               result.fortiOSIPv6Groups,
             );
-            logger.info(
-              `nsx-firewall-ssi: Manager ${manager.name} - Finished with Groups...`,
-            );
-
-            // console.log(fortiOSIPv4Groups);
 
             for (const fgEndpoint of integrator.fortigate_endpoints) {
               this._firewall = this._configureFirewall(
@@ -193,21 +192,22 @@ export class SSIWorker {
 
               await Promise.all(
                 fgEndpoint.vdoms.map(async (vdom) => {
-                  // await Promise.all([
-                  //   deployIPv4(
-                  //     integrator,
-                  //     this._firewall as FortiOSDriver,
-                  //     vdom,
-                  //     fortiOSIPv4Groups,
-                  //     fortiOSIPv4Addresses,
-                  //   ),
-                  // deployIPv6(
-                  //   this._firewall as FortiOSDriver,
-                  //   vdom,
-                  //   fortiOSIPv6Groups,
-                  //   fortiOSIPv6Addresses,
-                  // ),
-                  // ]);
+                  await Promise.all([
+                    deployIPv4(
+                      integrator,
+                      this._firewall as FortiOSDriver,
+                      vdom,
+                      fortiOSIPv4Groups,
+                      fortiOSIPv4Addresses,
+                    ),
+                    deployIPv6(
+                      integrator,
+                      this._firewall as FortiOSDriver,
+                      vdom,
+                      fortiOSIPv6Groups,
+                      fortiOSIPv6Addresses,
+                    ),
+                  ]);
                 }),
               );
             }

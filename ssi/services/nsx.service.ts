@@ -6,15 +6,19 @@
 import {
   FortiOSFirewallAddress6Type,
   FortiOSFirewallAddressType,
+  HTTPError,
+  isDevMode,
   NAMAPIEndpoint,
   NAMNsxIntegrator,
   NetboxTag,
   VMwareNSXDriver,
   VMwareNSXEnforcementPoint,
   VMwareNSXGroup,
+  VMwareNSXResponse,
   VMwareNSXSite,
   VMwareNSXTag,
   VMwareNSXVirtualMachine,
+  VMwareNSXVirtualNetworkInterface,
 } from "@norskhelsenett/zeniki";
 
 import {
@@ -28,11 +32,11 @@ import {
   FortiOSAddressGrps6,
   getVmIpAddresses,
   hashIpAddress,
-  isGlobalManagerPath,
   removeLinkLocalAddresses,
 } from "../ssi.utils.ts";
 import ipaddr from "ipaddr.js";
 import { Validator } from "ip-num";
+import logger from "../loggers/logger.ts";
 
 // import logger from "../loggers/logger.ts";
 
@@ -48,17 +52,35 @@ export const getVMTagsGroupsAndMembers = async (
     const fortiOSIPv6Addresses: FortiOSAddresses6 = {};
     const vmTags = integrator.vm_tags as NetboxTag[];
     const scope = integrator.scope;
-    const scopedVirtualMachines = await nsx.search.query<
-      VMwareNSXVirtualMachine
-    >(
-      {
-        query:
-          `resource_type:VirtualMachine AND tags.scope:${scope} AND power_state:VM_RUNNING`,
-      },
-      false,
-    );
+    const scopedVirtualMachines: VMwareNSXVirtualMachine[] =
+      (await nsx.search.query<
+        VMwareNSXVirtualMachine
+      >(
+        {
+          query:
+            `resource_type:VirtualMachine AND tags.scope:${scope} AND power_state:VM_RUNNING`,
+        },
+        false,
+      ).catch(
+        (error: HTTPError) => {
+          logger.warning(
+            `nsx-firewall-ssi: Could not retrieve prefixes from NSX ${nsx.getHostname()} due to ${error.message} `,
+            {
+              component: "ssi.worker",
+              method: "work",
+              error: isDevMode() ? error : error.message,
+            },
+          );
+          return;
+        },
+      ) as VMwareNSXResponse<VMwareNSXVirtualMachine>).results;
 
     for (const tag of vmTags) {
+      if (isDevMode()) {
+        logger.debug(
+          `nsx-firewall-ssi:      - Processing vm tag ${tag.name}.`,
+        );
+      }
       const ipv4GroupName = `grp_${manager.name}_${scope}_${tag.name}`;
       const ipv6GroupName = `grp6_${manager.name}_${scope}_${tag.name}`;
 
@@ -80,7 +102,7 @@ export const getVMTagsGroupsAndMembers = async (
       }
 
       const taggedVirtualMachines = filterVMsByTag(
-        scopedVirtualMachines.results,
+        scopedVirtualMachines,
         scope,
         tag.name,
       );
@@ -170,19 +192,42 @@ export const getGroupTagsGroupsAndMembers = async (
     const resourceType = gm ? "Group" : "NSGroup";
     const groupTags = integrator.group_tags as NetboxTag[];
 
-    const scopedGroups = await nsx.search.query<VMwareNSXGroup>(
-      {
-        query: `resource_type:${resourceType} AND tags.scope:${scope}`,
-      },
-      gm,
-    );
+    const scopedGroups: VMwareNSXGroup[] =
+      (await nsx.search.query<VMwareNSXGroup>(
+        {
+          query: `resource_type:${resourceType} AND tags.scope:${scope}`,
+        },
+        gm,
+      ).catch(
+        (error: HTTPError) => {
+          logger.warning(
+            `nsx-firewall-ssi: Could not retrieve groups from NSX ${nsx.getHostname()} due to ${error.message} `,
+            {
+              component: "ssi.worker",
+              method: "work",
+              error: isDevMode() ? error : error.message,
+            },
+          );
+          return;
+        },
+      ) as VMwareNSXResponse<VMwareNSXGroup>).results;
 
+    if (isDevMode()) {
+      logger.debug(
+        `nsx-firewall-ssi:   -- Processing group tags from local manager ${manager.name}.`,
+      );
+    }
     for (const tag of groupTags) {
+      if (isDevMode()) {
+        logger.debug(
+          `nsx-firewall-ssi:      - Processing group tag ${tag.name}.`,
+        );
+      }
       const ipv4GroupName = `grp_${manager.name}_${scope}_${tag.name}`;
       const ipv6GroupName = `grp6_${manager.name}_${scope}_${tag.name}`;
 
       const taggedGroups = filterGroupsByTag(
-        scopedGroups.results,
+        scopedGroups,
         scope,
         tag.name,
       );
@@ -215,7 +260,6 @@ export const getGroupTagsGroupsAndMembers = async (
         let groupIpAddresses: string[] = [];
         let groupVifAddresses: string[] = [];
 
-        // console.log("     - Policy Path:", policyPath);
         if (manager.type === "global") {
           if (group.expression) {
             for (const expression of group.expression) {
@@ -226,7 +270,6 @@ export const getGroupTagsGroupsAndMembers = async (
               }
             }
           }
-
           const globalManagerSites: VMwareNSXSite[] = (
             await nsx.sites.getSites()
           ).results;
@@ -253,25 +296,47 @@ export const getGroupTagsGroupsAndMembers = async (
           // Remove duplicates
           groupIpAddresses = [...new Set(noneLinkLocalEPIPAddresses)];
         } else {
-          const isGlobalGroup = isGlobalManagerPath(policyPath!);
-          const groupMemberIps = await nsx.groups.getGroupMemberIPAddresses(
-            group.display_name!,
-            {},
-            "default",
-            gm,
-            isGlobalGroup,
-          );
-          groupIpAddresses = groupIpAddresses.concat(groupMemberIps.results);
+          const ipAddressUrl =
+            `/policy/api/v1${policyPath}/members/ip-addresses`;
+          const groupMemberIps: string[] = (await nsx.getByUrl<
+            VMwareNSXResponse<string>
+          >(
+            ipAddressUrl,
+          ).catch(
+            (error: HTTPError) => {
+              logger.warning(
+                `nsx-firewall-ssi: Could not retrieve group member ip addresses from NSX for group ${group.display_name} ${nsx?.getHostname()} due to ${error.message} `,
+                {
+                  component: "ssi.worker",
+                  method: "work",
+                  error: isDevMode() ? error : error.message,
+                },
+              );
+              return;
+            },
+          ) as VMwareNSXResponse<string>).results;
 
-          const groupMemberVifs = (
-            await nsx.groups.getGroupMemberVifs(
-              group.display_name!,
-              {},
-              "default",
-              gm,
-              isGlobalGroup!,
-            )
-          ).results;
+          groupIpAddresses = groupIpAddresses.concat(groupMemberIps);
+
+          const vifsUrl = `/policy/api/v1${policyPath}/members/vifs`;
+          const groupMemberVifs: VMwareNSXVirtualNetworkInterface[] = (await nsx
+            .getByUrl<
+              VMwareNSXResponse<VMwareNSXVirtualNetworkInterface>
+            >(
+              vifsUrl,
+            ).catch(
+              (error: HTTPError) => {
+                logger.warning(
+                  `nsx-firewall-ssi: Could not retrieve group member virtual interfaces from NSX for group ${group.display_name} ${nsx?.getHostname()} due to ${error.message} `,
+                  {
+                    component: "ssi.worker",
+                    method: "work",
+                    error: isDevMode() ? error : error.message,
+                  },
+                );
+                return;
+              },
+            ) as VMwareNSXResponse<VMwareNSXVirtualNetworkInterface>).results;
 
           for (const vif of groupMemberVifs) {
             if (vif.ip_address_info && vif.ip_address_info.length > 0) {

@@ -2,9 +2,9 @@ name: Build and Test
 
 on:
   push:
-    branches: [cfl]
+    branches: [main]
   pull_request:
-    branches: [cfl]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -17,7 +17,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.5.x
+          deno-version: v2.6.x
 
       - name: Verify Deno installation
         run: deno --version
@@ -38,8 +38,8 @@ jobs:
       - name: Lint
         run: deno lint
 
-      #- name: Format check
-      #  run: deno fmt --check
+      - name: Format check
+        run: deno fmt --check
 
       - name: Type check
         run: deno check main.ts
@@ -58,7 +58,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.5.x
+          deno-version: v2.6.x
 
       - name: Run security audit
         run: deno task update -- --dry-run || echo "No outdated dependencies found"

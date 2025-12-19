@@ -1,6 +1,12 @@
 import {
   FortiOSDriver,
+  FortiOSFirewallAddress,
+  FortiOSFirewallAddress6,
+  FortiOSFirewallAddrGrp,
+  FortiOSFirewallAddrGrp6,
+  FortiOSResponse,
   FortiOSSystemVDOM,
+  HTTPError,
   isDevMode,
   NAMNsxIntegrator,
 } from "@norskhelsenett/zeniki";
@@ -23,25 +29,50 @@ export const deployIPv4 = async (
 ) => {
   try {
     // Fetch existing addresses and address groups from Fortigate
-    const fgIPv4Addresses = await firewall.address.getAddresses({
-      vdom: vdom.name,
-    });
+    const fgIPv4Addresses: FortiOSFirewallAddress[] = (await firewall.address
+      .getAddresses({
+        vdom: vdom.name,
+      }).catch(
+        (error: HTTPError) => {
+          logger.warning(
+            `nsx-firewall-ssi: Could not retrieve ipv4 addresses from Fortigate ${firewall.getHostname()} due to ${error.message} `,
+            {
+              component: "ssi.worker",
+              method: "work",
+              error: isDevMode() ? error : error.message,
+            },
+          );
+          return;
+        },
+      ) as FortiOSResponse<FortiOSFirewallAddress>).results;
 
-    const fgIPv4Groups = await firewall.addrgrp.getAddressGroups({
-      vdom: vdom.name,
-    });
+    const fgIPv4Groups: FortiOSFirewallAddrGrp[] =
+      (await firewall.addrgrp.getAddressGroups({
+        vdom: vdom.name,
+      }).catch(
+        (error: HTTPError) => {
+          logger.warning(
+            `nsx-firewall-ssi: Could not retrieve ipv4 address groups from Fortigate ${firewall.getHostname()} due to ${error.message} `,
+            {
+              component: "ssi.worker",
+              method: "work",
+              error: isDevMode() ? error : error.message,
+            },
+          );
+          return;
+        },
+      ) as FortiOSResponse<FortiOSFirewallAddrGrp>).results;
 
     // Find missing addresses and groups
     const missingAddresses = Object.values(fortiOSIPv4Addresses).filter(
       (address) =>
-        !fgIPv4Addresses.results.some(
+        !fgIPv4Addresses.some(
           (fgAddress) => fgAddress.name === address.name,
         ),
     );
 
     const missingGroups = Object.values(fortiOSIPv4Groups).filter(
-      (group) =>
-        !fgIPv4Groups.results.some((fgGroup) => fgGroup.name === group.name),
+      (group) => !fgIPv4Groups.some((fgGroup) => fgGroup.name === group.name),
     );
 
     // Create missing addresses and groups on Fortigate
@@ -85,7 +116,7 @@ export const deployIPv4 = async (
 
     // Update group if the members have changed
     for (const group of Object.values(fortiOSIPv4Groups)) {
-      const existingGroup = fgIPv4Groups.results.find(
+      const existingGroup = fgIPv4Groups.find(
         (fgGroup) => fgGroup.name === group.name,
       );
 
@@ -93,17 +124,12 @@ export const deployIPv4 = async (
         //Find members only present in NSX
         const added = group.member?.filter(
           (m) => !existingGroup.member?.some((em) => em.name === m.name),
-        ) || [];
+        );
 
         //Find members only present in FortiGate
         const removed = existingGroup.member?.filter((m) =>
-          !group.member.some((gm) =>
-            gm.name === m.name
-          )
-        ) || [];
-
-        console.log("  - IPv4 Members to add:", added.map((a) => a.name));
-        console.log("  - IPv4 Members to remove:", removed.map((r) => r.name));
+          !group.member.some((gm) => gm.name === m.name)
+        );
 
         const hasChanged = added.length > 0 || removed.length > 0;
 
@@ -167,7 +193,6 @@ export const deployIPv4 = async (
                     );
                   },
                 ).catch((error: Error) => {
-                  console.log(error);
                   logger.error(
                     `nsx-firewall-ssi: Failed to delete IPv4 address '${address.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'`,
                     {
@@ -197,25 +222,50 @@ export const deployIPv6 = async (
 ) => {
   try {
     // Fetch existing addresses and address groups from Fortigate
-    const fgIPv6Addresses = await firewall.address6.getAddresses6({
-      vdom: vdom.name,
-    });
+    const fgIPv6Addresses: FortiOSFirewallAddress6[] = (await firewall.address6
+      .getAddresses6({
+        vdom: vdom.name,
+      }).catch(
+        (error: HTTPError) => {
+          logger.warning(
+            `nsx-firewall-ssi: Could not retrieve ipv6 addresses from Fortigate ${firewall.getHostname()} due to ${error.message} `,
+            {
+              component: "ssi.worker",
+              method: "work",
+              error: isDevMode() ? error : error.message,
+            },
+          );
+          return;
+        },
+      ) as FortiOSResponse<FortiOSFirewallAddress6>).results;
 
-    const fgIPv6Groups = await firewall.addrgrp6.getAddressGroups6({
-      vdom: vdom.name,
-    });
+    const fgIPv6Groups: FortiOSFirewallAddrGrp6[] =
+      (await firewall.addrgrp6.getAddressGroups6({
+        vdom: vdom.name,
+      }).catch(
+        (error: HTTPError) => {
+          logger.warning(
+            `nsx-firewall-ssi: Could not retrieve ipv6 address groups from Fortigate ${firewall.getHostname()} due to ${error.message} `,
+            {
+              component: "ssi.worker",
+              method: "work",
+              error: isDevMode() ? error : error.message,
+            },
+          );
+          return;
+        },
+      ) as FortiOSResponse<FortiOSFirewallAddrGrp6>).results;
 
     // Find missing addresses and groups
     const missingAddresses = Object.values(fortiOSIPv6Addresses).filter(
       (address) =>
-        !fgIPv6Addresses.results.some(
+        !fgIPv6Addresses.some(
           (fgAddress) => fgAddress.name === address.name,
         ),
     );
 
     const missingGroups = Object.values(fortiOSIPv6Groups).filter(
-      (group) =>
-        !fgIPv6Groups.results.some((fgGroup) => fgGroup.name === group.name),
+      (group) => !fgIPv6Groups.some((fgGroup) => fgGroup.name === group.name),
     );
     // Create missing addresses and groups on Fortigate
     for (const address of missingAddresses) {
@@ -257,7 +307,7 @@ export const deployIPv6 = async (
     }
     // Update group if the members have changed
     for (const group of Object.values(fortiOSIPv6Groups)) {
-      const existingGroup = fgIPv6Groups.results.find(
+      const existingGroup = fgIPv6Groups.find(
         (fgGroup) => fgGroup.name === group.name,
       );
 
@@ -273,9 +323,6 @@ export const deployIPv6 = async (
             gm.name === m.name
           )
         ) || [];
-
-        console.log("  - IPv6 Members to add:", added.map((a) => a.name));
-        console.log("  - IPv6 Members to remove:", removed.map((r) => r.name));
 
         const hasChanged = added.length > 0 || removed.length > 0;
 
@@ -339,7 +386,6 @@ export const deployIPv6 = async (
                     );
                   },
                 ).catch((error: Error) => {
-                  console.log(error);
                   logger.error(
                     `nsx-firewall-ssi: Failed to delete IPv6 address '${address.name}' from integrator '${integrator.name}' on '${firewall.getHostname()}' vdom '${vdom.name}'`,
                     {
