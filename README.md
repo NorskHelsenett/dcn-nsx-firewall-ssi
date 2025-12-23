@@ -1,11 +1,11 @@
 # NSX-Firewall-SSI
 
-Synchronization service that manages IP address objects between Netbox NSX and
-firewall systems (FortiOS).
+Synchronization service that manages IP address objects between NSX and firewall
+systems (FortiOS).
 
 ## Overview
 
-NSX-Firewall-SSI automatically syncs IP prefixes from Netbox to firewall address
+NSX-Firewall-SSI automatically syncs IP prefixes from NSX to firewall address
 objects and groups:
 
 - **FortiOS**: Creates IPv4/IPv6 addresses and address groups on specified VDOMs
@@ -69,7 +69,7 @@ REQUEST_TIMEOUT: "10000" # API request timeout in milliseconds
 
 # NAM (Network Automation Manager) settings
 NAM_URL: "https://nam.example.com/api" # NAM API endpoint URL
-NAM_TEST_INT: "507f1f77bcf86cd799439011" # Netbox integrator ID for testing (dev only)
+NAM_TEST_INT: "507f1f77bcf86cd799439011" # NSX integrator ID for testing (dev only)
 
 # Splunk logging settings
 SPLUNK_URL: "https://splunk.example.com" # Splunk HEC endpoint
@@ -445,7 +445,7 @@ kubectl logs nsx-firewall-ssi -n ssi
 ## How It Works
 
 1. **Initialization**: Worker reads configuration and connects to NAM API
-2. **Fetch Integrators**: Retrieves Netbox integrators based on priority
+2. **Fetch Integrators**: Retrieves NSX integrators based on priority
 3. **Get VMs and Security group addresses**: Queries NSX for IP addresses using
    integrator queries
 4. **Deploy to FortiOS**:

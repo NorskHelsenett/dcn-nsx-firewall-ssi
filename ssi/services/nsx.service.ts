@@ -1,6 +1,6 @@
 /**
  * NSX Service - Manages VMware NSX security groups for IP address management
- * Syncs IP prefixes from Netbox to NSX security groups
+ * Syncs IP prefixes from NSX to NSX security groups
  */
 
 import {
@@ -37,8 +37,6 @@ import {
 import ipaddr from "ipaddr.js";
 import { Validator } from "ip-num";
 import logger from "../loggers/logger.ts";
-
-// import logger from "../loggers/logger.ts";
 
 export const getVMTagsGroupsAndMembers = async (
   nsx: VMwareNSXDriver,

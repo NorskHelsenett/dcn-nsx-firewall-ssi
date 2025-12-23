@@ -7,7 +7,7 @@ data:
   config.yaml: |
     ---
     # Configuration for NSX-Firewall-SSI
-    # Syncs IP address management data from Netbox to FortiOS firewalls
+    # Syncs IP address management data from NSX to FortiOS firewalls
 
     # Environment and SSI settings
     DENO_ENV: "development"                    # Runtime environment: development, production
@@ -19,7 +19,7 @@ data:
 
     # NAM (Network Automation Manager) settings
     NAM_URL: "https://qa.dcn.nhn.no:3000/api"  # NAM API endpoint
-    NAM_TEST_INT: "68fb3b04b26e1dfbd93847e0"   # Netbox integrator ID for testing
+    NAM_TEST_INT: "68fb3b04b26e1dfbd93847e0"   # NSX integrator ID for testing
 
     # Splunk logging settings
     SPLUNK_URL: "https://splunk-hec.nhn.no"    # Splunk HEC endpoint

@@ -2,5 +2,5 @@ apiVersion: v2
 name: dcn-nsx-firewall-ssi
 description: Network automation sync for NSX to Firewall
 type: application
-version: 0.9.27
-appVersion: "0.9.27"
+version: 0.0.2
+appVersion: "0.0.2"

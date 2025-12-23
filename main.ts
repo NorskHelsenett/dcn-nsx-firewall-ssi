@@ -1,7 +1,7 @@
 /**
  * NSX-Firewall-SSI Main Entry Point
  * Initializes and runs the SSI worker on a scheduled interval
- * Syncs IP address data from Netbox to FortiOS and VMware NSX systems
+ * Syncs IP address data from NSX to FortiOS and VMware NSX systems
  *
  * Execution Modes:
  * - One-shot mode (CRON_MODE != "true"): Runs once and exits (for Kubernetes CronJobs)
