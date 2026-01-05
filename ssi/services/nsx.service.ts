@@ -71,7 +71,7 @@ export const getVMTagsGroupsAndMembers = async (
           );
           return;
         },
-      ) as VMwareNSXResponse<VMwareNSXVirtualMachine>).results;
+      ) as VMwareNSXResponse<VMwareNSXVirtualMachine>)?.results;
 
     for (const tag of vmTags) {
       if (isDevMode()) {
@@ -208,7 +208,7 @@ export const getGroupTagsGroupsAndMembers = async (
           );
           return;
         },
-      ) as VMwareNSXResponse<VMwareNSXGroup>).results;
+      ) as VMwareNSXResponse<VMwareNSXGroup>)?.results;
 
     if (isDevMode()) {
       logger.debug(
@@ -270,7 +270,7 @@ export const getGroupTagsGroupsAndMembers = async (
           }
           const globalManagerSites: VMwareNSXSite[] = (
             await nsx.sites.getSites()
-          ).results;
+          )?.results;
 
           const gmEnforcementPoints: VMwareNSXEnforcementPoint[] = [];
 
@@ -312,7 +312,7 @@ export const getGroupTagsGroupsAndMembers = async (
               );
               return;
             },
-          ) as VMwareNSXResponse<string>).results;
+          ) as VMwareNSXResponse<string>)?.results;
 
           groupIpAddresses = groupIpAddresses.concat(groupMemberIps);
 
@@ -334,7 +334,7 @@ export const getGroupTagsGroupsAndMembers = async (
                 );
                 return;
               },
-            ) as VMwareNSXResponse<VMwareNSXVirtualNetworkInterface>).results;
+            ) as VMwareNSXResponse<VMwareNSXVirtualNetworkInterface>)?.results;
 
           for (const vif of groupMemberVifs) {
             if (vif.ip_address_info && vif.ip_address_info.length > 0) {
