@@ -101,7 +101,7 @@ export class SSIWorker {
           : ((
             await SSIWorker._nms.nsx_integrators.getNsxIntegrators({
               expand: 1,
-              enabled: true,
+              // enabled: true,
               sync_priority: priority,
             })
           )?.results as NAMNsxIntegrator[]);
