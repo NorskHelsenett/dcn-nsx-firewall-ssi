@@ -5,6 +5,7 @@
 
 import {
   FortiOSDriver,
+  HTTPError,
   isDevMode,
   NAMAPIEndpoint,
   NAMNsxIntegrator,
@@ -107,111 +108,124 @@ export class SSIWorker {
           )?.results as NAMNsxIntegrator[]);
 
         for (const integrator of integrators) {
-          if (isDevMode()) {
-            logger.debug(
-              `nsx-firewall-ssi: * Processing integrator: ${integrator.name}...`,
-              {
-                component: "worker",
-                method: "work",
-              },
-            );
-          }
-          const managers = integrator.managers as NAMAPIEndpoint[];
-          let fortiOSIPv4Groups: FortiOSAddressGrps = {};
-          let fortiOSIPv4Addresses: FortiOSAddresses = {};
-          let fortiOSIPv6Groups: FortiOSAddressGrps6 = {};
-          let fortiOSIPv6Addresses: FortiOSAddresses6 = {};
-          for (const manager of managers) {
-            this._nsx = this._configureNSX(manager as NAMAPIEndpoint);
-            const lm = manager.type === "local" ||
-              manager.type === "global_managed";
+          try {
+            if (isDevMode()) {
+              logger.debug(
+                `nsx-firewall-ssi: * Processing integrator: ${integrator.name}...`,
+                {
+                  component: "worker",
+                  method: "work",
+                },
+              );
+            }
+            const managers = integrator.managers as NAMAPIEndpoint[];
+            let fortiOSIPv4Groups: FortiOSAddressGrps = {};
+            let fortiOSIPv4Addresses: FortiOSAddresses = {};
+            let fortiOSIPv6Groups: FortiOSAddressGrps6 = {};
+            let fortiOSIPv6Addresses: FortiOSAddresses6 = {};
+            for (const manager of managers) {
+              this._nsx = this._configureNSX(manager as NAMAPIEndpoint);
+              const lm = manager.type === "local" ||
+                manager.type === "global_managed";
 
-            // Fetch VM tags from local manager only
-            if (lm) {
-              if (isDevMode()) {
-                logger.debug(
-                  `nsx-firewall-ssi:   -- Processing VM tags from local manager ${manager.name}.`,
+              // Fetch VM tags from local manager only
+              if (lm) {
+                if (isDevMode()) {
+                  logger.debug(
+                    `nsx-firewall-ssi:   -- Processing VM tags from local manager ${manager.name}.`,
+                  );
+                }
+
+                const result = await getVMTagsGroupsAndMembers(
+                  this._nsx,
+                  integrator,
+                  manager,
+                );
+
+                Object.assign(
+                  fortiOSIPv4Groups,
+                  result.fortiOSIPv4Groups,
+                );
+                Object.assign(
+                  fortiOSIPv4Addresses,
+                  result.fortiOSIPv4Addresses,
+                );
+                Object.assign(
+                  fortiOSIPv6Groups,
+                  result.fortiOSIPv6Groups,
+                );
+                Object.assign(
+                  fortiOSIPv6Addresses,
+                  result.fortiOSIPv6Addresses,
                 );
               }
 
-              const result = await getVMTagsGroupsAndMembers(
+              // Fetch Group tags from all managers
+              const result = await getGroupTagsGroupsAndMembers(
                 this._nsx,
                 integrator,
                 manager,
               );
 
-              Object.assign(
-                fortiOSIPv4Groups,
-                result.fortiOSIPv4Groups,
-              );
-              Object.assign(
+              // Merge addresses
+              fortiOSIPv4Addresses = mergeAddressObjects(
                 fortiOSIPv4Addresses,
                 result.fortiOSIPv4Addresses,
               );
-              Object.assign(
-                fortiOSIPv6Groups,
-                result.fortiOSIPv6Groups,
-              );
-              Object.assign(
+              fortiOSIPv6Addresses = mergeAddressObjects(
                 fortiOSIPv6Addresses,
                 result.fortiOSIPv6Addresses,
               );
-            }
 
-            // Fetch Group tags from all managers
-            const result = await getGroupTagsGroupsAndMembers(
-              this._nsx,
-              integrator,
-              manager,
-            );
-
-            // Merge addresses
-            fortiOSIPv4Addresses = mergeAddressObjects(
-              fortiOSIPv4Addresses,
-              result.fortiOSIPv4Addresses,
-            );
-            fortiOSIPv6Addresses = mergeAddressObjects(
-              fortiOSIPv6Addresses,
-              result.fortiOSIPv6Addresses,
-            );
-
-            // Merge addresses
-            fortiOSIPv4Groups = mergeGroupObjects(
-              fortiOSIPv4Groups,
-              result.fortiOSIPv4Groups,
-            );
-
-            fortiOSIPv6Groups = mergeGroupObjects(
-              fortiOSIPv6Groups,
-              result.fortiOSIPv6Groups,
-            );
-
-            for (const fgEndpoint of integrator.fortigate_endpoints) {
-              this._firewall = this._configureFirewall(
-                fgEndpoint.endpoint as NAMAPIEndpoint,
+              // Merge addresses
+              fortiOSIPv4Groups = mergeGroupObjects(
+                fortiOSIPv4Groups,
+                result.fortiOSIPv4Groups,
               );
 
-              await Promise.all(
-                fgEndpoint.vdoms.map(async (vdom) => {
-                  await Promise.all([
-                    deployIPv4(
-                      integrator,
-                      this._firewall as FortiOSDriver,
-                      vdom,
-                      fortiOSIPv4Groups,
-                      fortiOSIPv4Addresses,
-                    ),
-                    deployIPv6(
-                      integrator,
-                      this._firewall as FortiOSDriver,
-                      vdom,
-                      fortiOSIPv6Groups,
-                      fortiOSIPv6Addresses,
-                    ),
-                  ]);
-                }),
+              fortiOSIPv6Groups = mergeGroupObjects(
+                fortiOSIPv6Groups,
+                result.fortiOSIPv6Groups,
               );
+
+              for (const fgEndpoint of integrator.fortigate_endpoints) {
+                this._firewall = this._configureFirewall(
+                  fgEndpoint.endpoint as NAMAPIEndpoint,
+                );
+
+                await Promise.all(
+                  fgEndpoint.vdoms.map(async (vdom) => {
+                    await Promise.all([
+                      deployIPv4(
+                        integrator,
+                        this._firewall as FortiOSDriver,
+                        vdom,
+                        fortiOSIPv4Groups,
+                        fortiOSIPv4Addresses,
+                      ),
+                      deployIPv6(
+                        integrator,
+                        this._firewall as FortiOSDriver,
+                        vdom,
+                        fortiOSIPv6Groups,
+                        fortiOSIPv6Addresses,
+                      ),
+                    ]);
+                  }),
+                );
+              }
             }
+          } catch (error: unknown) {
+            logger.error(
+              `nsx-firewall-ssi: Failed to process integrator ${integrator.name}, skipping to next integrator`,
+              {
+                component: "worker",
+                method: "work",
+                error: (error as HTTPError).message ?? String(error),
+              },
+            );
+            // Continue to next integrator
+            continue;
           }
         }
 

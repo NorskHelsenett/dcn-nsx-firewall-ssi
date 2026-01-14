@@ -7,6 +7,8 @@ import {
   FortiOSFirewallAddrGrp,
   FortiOSFirewallAddrGrp6,
   FortiOSSystemVDOM,
+  HTTPError,
+  isDevMode,
   NAMAPIEndpoint,
   VMwareNSXDriver,
   VMwareNSXGroup,
@@ -18,6 +20,7 @@ import { createHash } from "node:crypto";
 import { IPv4CidrRange, Validator } from "ip-num";
 const SSI_NAME = Deno.env.get("SSI_NAME") ?? "SSI_NAME_MISSING";
 import packageInfo from "../deno.json" with { type: "json" };
+import logger from "./loggers/logger.ts";
 const USER_AGENT = `${SSI_NAME}/${packageInfo.version}`;
 
 export type FortiOSAddressGrps = Record<string, FortiOSFirewallAddrGrp>;
@@ -70,6 +73,18 @@ export const addressInUse = async (
   const currentAddress = (await firewall.address.getAddress(
     address.name,
     { with_meta: 1, vdom: vdom.name },
+  ).catch(
+    (error: HTTPError) => {
+      logger.error(
+        `nsx-firewall-ssi: Could not retrieve IPv4 address from firewall ${firewall.getHostname()} due to ${error.message}`,
+        {
+          component: "ssi.utils",
+          method: "addressInUse",
+          error: isDevMode() ? error : error.message,
+        },
+      );
+      throw error;
+    },
   )).results[0];
 
   return currentAddress?.q_ref !== 0;
@@ -83,7 +98,17 @@ export const address6InUse = async (
   const currentAddress = (await firewall.address6.getAddress6(
     address.name,
     { with_meta: 1, vdom: vdom.name },
-  )).results[0];
+  ).catch((error: HTTPError) => {
+    logger.error(
+      `nsx-firewall-ssi: Could not retrieve IPv6 address from firewall ${firewall.getHostname()} due to ${error.message}`,
+      {
+        component: "ssi.utils",
+        method: "address6InUse",
+        error: isDevMode() ? error : error.message,
+      },
+    );
+    throw error;
+  })).results[0];
 
   return currentAddress?.q_ref !== 0;
 };
@@ -139,7 +164,19 @@ export const getVmIpAddresses = async (
 ): Promise<string[]> => {
   const vifs = await nsx.virtualInterfaces.getVirtualInterfaces({
     owner_vm_id: vmId,
-  });
+  }).catch(
+    (error: HTTPError) => {
+      logger.error(
+        `nsx-firewall-ssi: Could not retrieve virtual interfaces from NSX ${nsx.getHostname()} due to ${error.message}`,
+        {
+          component: "nsx.utils",
+          method: "getVmIpAddresses",
+          error: isDevMode() ? error : error.message,
+        },
+      );
+      throw error;
+    },
+  );
   return extractIpAddresses(vifs.results);
 };
 
